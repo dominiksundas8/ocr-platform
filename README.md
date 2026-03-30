@@ -1,56 +1,90 @@
-# 🚀 DeepEx: Enterprise-Grade AI Identity Extraction Platform
+# 🚀 AI-Invoice Hub: Enterprise AI Accounting Platform
 
-DeepEx è una soluzione SaaS all'avanguardia progettata per automatizzare l'estrazione e la gestione dei dati dai documenti d'identità (**Patente di Guida** e **Carta d'Identità Elettronica**). Utilizzando modelli di visione artificiale di ultima generazione (**Google Gemini 1.5 Flash**), la piattaforma trasforma immagini grezze in dati strutturati con precisione chirurgica.
+**AI-Invoice Hub** è una soluzione SaaS di livello enterprise progettata per automatizzare l'estrazione e la gestione dei dati da fatture e documenti commerciali. Utilizzando modelli di visione artificiale di ultima generazione (**Google Gemini 1.5 Flash**), la piattaforma trasforma immagini grezze in dati strutturati con precisione chirurgica, ottimizzando i flussi contabili aziendali.
 
 ---
 
-## 🏗️ Architettura del Sistema (Microservizi)
+## 🏗️ Architettura del Sistema (Advanced Microservices)
 
-La piattaforma è costruita su un'architettura a **microservizi disaccoppiati**, garantendo scalabilità orizzontale e manutenibilità. Ogni componente gira nel proprio container Docker.
+La piattaforma è costruita su un'architettura a **microservizi disaccoppiati**, garantendo scalabilità orizzontale e resilienza. Ogni componente gira nel proprio container Docker.
 
 ```mermaid
 graph TD
-    User((Utente / Operatore)) -->|Next.js App| Frontend[Frontend: Next.js 14]
+    User((Utente / Operatore)) -->|Next.js App| Frontend[Frontend: Next.js 15]
     Frontend -->|REST API + JWT| Backend[Backend: Django DRF]
-    Backend -->|Postgres Query| DB[(Database: PostgreSQL)]
-    Backend -->|Async Task| OCR[OCR Service: FastAPI]
-    OCR -->|Vision Logic| Gemini[Google Gemini AI API]
-    Backend -->|Media Storage| Storage[Local/Cloud Storage]
+    
+    subgraph "Asynchronous Pipeline"
+        Backend -->|Enqueues Task| Redis{Broker: Redis}
+        Redis -->|Processes| Worker[Celery Worker]
+        Worker -->|Secure API Call| OCR[OCR Service: FastAPI]
+        OCR -->|Vision AI| Gemini[Google Gemini AI]
+    end
+    
+    Backend -->|Data Persistence| DB[(Database: PostgreSQL)]
+    Worker -->|Update Status| DB
 ```
 
 ### 🧠 Dettaglio Componenti
-1.  **Frontend (Next.js 14 + Tailwind 4):** 
-    - L'interfaccia utilizza un design **High-Density** per massimizzare l'efficienza degli operatori.
-    - Utilizza **NextAuth.js** per la gestione delle sessioni sicure.
-    - Implementa **Server Action** e **Client Components** per un bilanciamento perfetto tra SEO e interattività.
-2.  **Core Backend (Django Framework):** 
-    - Funge da orchestratore centrale. 
-    - Gestisce la sicurezza (JWT), le migrazioni del database e la validazione dei dati.
-    - Include un sistema di **Django Signals** (Zero-Waste) che pulisce automaticamente i file media eliminati per evitare sprechi di storage.
-3.  **OCR AI Engine (FastAPI):** 
-    - Un microservizio estremamente leggero e veloce dedicato esclusivamente all'integrazione AI.
-    - Utilizza **FastAPI** per gestire chiamate asincrone e ridurre al minimo la latenza durante l'analisi delle immagini.
-4.  **Persistence Layer (PostgreSQL):** 
-    - Database relazionale solido per la conservazione di record utenti e metadati dei documenti.
+1.  **Frontend (Next.js 15 + Tailwind):** Interfaccia High-Density per massimizzare l'efficienza degli operatori. Gestisce sessioni sicure e polling dinamico.
+2.  **Core Backend (Django 4.2):** L'orchestratore centrale. Gestisce la logica di business, la sicurezza JWT e le migrazioni del database.
+3.  **Task Engine (Celery + Redis):** Gestisce il processamento OCR in background, permettendo alla UI di rimanere fluida e reattiva.
+4.  **OCR AI Engine (FastAPI):** Microservizio bridge dedicato esclusivamente all'integrazione AI, isolando la logica di visione artificiale dal core.
+5.  **Persistence Layer (PostgreSQL):** Database relazionale di classe enterprise per la conservazione sicura di anagrafiche, metadati e risultati OCR.
 
 ---
 
 ## ✨ Funzionalità Principali
 
-### 📤 Centro di Caricamento Avanzato
-- **Live Image Preview:** Visualizzazione istantanea del documento caricato tramite `URL.createObjectURL`.
-- **Scanning Lock:** L'interfaccia inibisce azioni multiple durante il processamento AI, garantendo l'integrità del flusso di lavoro.
+### 📤 Centro di Caricamento Intelligente
+- **Live Image Preview:** Visualizzazione istantanea del documento tramite `URL.createObjectURL`.
+- **Async Processing:** L'utente può caricare più fatture e continuare a lavorare mentre il sistema le elabora in background.
 
-### 🗃️ Vault Documentale (Archivio)
+### 🗃️ Vault Contabile (Archivio)
 - **High-Density Data Tables:** Viste compatte che permettono di visualizzare centinaia di record in una singola schermata.
-- **Status Badges:** Indicatori cromatici istantanei sulla validità dei documenti e sullo stato della scansione.
+- **Status Badges:** Indicatori cromatici istantanei sulla validità dei documenti e sullo stato della scansione (PROCESSING, COMPLETED, FAILED).
 
 ### 👮 Console di Amministrazione (Radar Control)
 - **User Management:** Monitoraggio totale degli operatori registrati.
-- **Deep Inspection:** Possibilità per l'Admin di "entrare" nell'archivio di ogni utente per verificare la conformità dei documenti caricati.
+- **Deep Inspection:** Possibilità per l'Admin di visionare l'archivio di ogni utente per verificare la conformità dei caricamenti.
 
-### 📄 Analisi Dettaglio
-- **Side-by-Side Review:** Confronto visivo tra l'immagine originale e i dati estratti dall'IA su un'unica schermata divisa.
+---
+
+## 📂 Struttura del Progetto
+
+```text
+ocr_project/
+├── .env                # Configurazione UNIFICATA (Root)
+├── docker-compose.yml  # Orchestrazione Multi-Container
+├── backend/            # Django Core (Modelli, API, Auth)
+│   ├── api/            # Logica Documenti, Tasks Celery & Test
+│   │   ├── tasks.py    # Logica di resilienza OCR (Celery)
+│   │   └── tests.py    # Suite di test Backend
+│   └── core/           # Impostazioni & Celery App
+├── frontend/           # Next.js 15 App (Interfaccia Utente)
+│   ├── src/app/        # Rotte (Dashboard, Admin, Auth)
+│   ├── src/lib/api.ts  # Networking dinamico (Docker/Local)
+│   └── src/types/      # Definizioni TypeScript (NextAuth)
+├── ocr_service/        # FastAPI Service (Integration Gemini AI)
+│   ├── main.py         # Motore OCR & Sonda Modelli
+│   └── tests/          # Suite di test OCR
+└── README.md           # Questa documentazione
+```
+
+---
+
+## 🛡️ Resilience & Security (Professional Hardening)
+
+### 👮 Sicurezza di Livello Bancario
+- **JWT Token Rotation**: Implementata la rotazione dei Refresh Token per prevenire furti di sessione.
+- **Silent Refresh**: La sessione si rinnova automaticamente in background (Sliding Window), garantendo un'esperienza fluida.
+- **Internal Secret Protection**: Comunicazione Backend-OCR protetta da header `X-Internal-Secret`.
+
+### ⚙️ Tolleranza ai Guasti
+- **Automatic Retry Logic**: Il sistema gestisce autonomamente i fallimenti delle API esterne con **3 tentativi di recupero** automatici gestiti da Celery.
+- **Data Cleanup**: Sistemi di eliminazione automatica dei file media non più referenziati per ottimizzare lo storage.
+
+### 🧪 Suite di Test
+- **Pytest Suite**: Oltre 30 test automatizzati verificano l'isolamento dei dati, l'autenticazione e la logica asincrona dei task.
 
 ---
 
@@ -60,39 +94,24 @@ graph TD
 - Docker & Docker Compose installati sul proprio OS.
 
 ### 2. Configurazione Variabili d'Ambiente
-Il progetto usa un file `.env` nella root per gestire tutti i segreti. Docker Compose lo legge automaticamente.
+Il progetto usa un file `.env` unico nella root. Docker Compose lo legge automaticamente per tutti i servizi.
 
-1.  **Copia il template:** Duplica il file `env.template` e rinominalo `.env`:
+1.  **Copia il template:** Duplica `env.template` in `.env`:
     ```bash
     cp env.template .env
     ```
-2.  **Inserisci i tuoi valori:** Apri il file `.env` appena creato e compila i campi richiesti:
-
-    | Variabile | Dove trovarla | Obbligatoria |
-    |---|---|---|
-    | `GEMINI_API_KEY` | [Google AI Studio](https://aistudio.google.com/) | ✅ Sì |
-    | `DJANGO_SECRET_KEY` | Genera un valore casuale sicuro | ✅ Sì in produzione |
-    | `NEXTAUTH_SECRET` | Qualsiasi stringa lunga e casuale | ✅ Sì in produzione |
-    | `POSTGRES_PASSWORD` | Lascia `postgres` per sviluppo locale | ⚠️ Cambia in produzione |
-
-3.  Il file `docker-compose.yml` leggerà automaticamente tutte le variabili dal file `.env`.
-
-> ⚠️ **Non caricare mai il file `.env` su GitHub.** È già escluso dal `.gitignore` del progetto.
-
+2.  **Configura i segreti:** Apri `.env` e inserisci la tua `GEMINI_API_KEY` (da [Google AI Studio](https://aistudio.google.com/)).
 
 ### 3. Avvio
-Esegui il comando per compilare e avviare tutti i servizi:
 ```bash
-docker-compose up --build
+docker-compose up --build -d
 ```
 
-### 4. Creazione Account Admin (prima volta)
-Con i container attivi, apri un secondo terminale ed esegui:
+### 4. Creazione Account Admin
 ```bash
+docker-compose exec backend python manage.py migrate
 docker-compose exec backend python manage.py createsuperuser
 ```
-Segui le istruzioni per impostare email e password dell'amministratore.
-Questo account ti permetterà di accedere alla **Console di Amministrazione** e gestire tutti gli utenti.
 
 ### 5. Accesso alla Piattaforma
 - **Pannello Utente:** [http://localhost:3000](http://localhost:3000)
@@ -100,27 +119,4 @@ Questo account ti permetterà di accedere alla **Console di Amministrazione** e 
 - **Interfaccia OCR:** [http://localhost:8001](http://localhost:8001)
 
 ---
-
-## 📂 Struttura del Progetto
-
-```text
-ocr_project/
-├── backend/            # Django Core (Modelli, API, Auth)
-│   ├── api/            # Logica dei Documenti e Admin
-│   └── core/           # Impostazioni di sistema
-├── frontend/           # Next.js 14 App (Interfaccia Utente)
-│   ├── src/app/        # Rotte (Dashboard, Admin, Auth)
-│   └── src/components/ # Componenti UI riutilizzabili
-├── ocr_service/        # FastAPI Service (Gemini AI Integration)
-└── README.md           # Questa documentazione
-```
-
----
-
-## 🛡️ Sicurezza e Protezione Dati
-- **Isolamento JWT:** Ogni utente può accedere esclusivamente ai propri documenti.
-- **Admin Sharding:** Solo gli operatori con flag `is_staff` possono accedere alla console di amministrazione.
-- **Cleanup Automatico:** Quando elimini un documento, il file fisico viene rimosso dal server per rispettare la privacy e ottimizzare le risorse.
-
----
-*Manuale Tecnico Aggiornato al 30 Marzo 2026*
+*Manuale Tecnico Aggiornato - DeepEx v2.0*

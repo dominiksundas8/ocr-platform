@@ -23,7 +23,7 @@ graph TD
     Backend -->|Metadata & Status| DB[(PostgreSQL)]
     Worker -->|Update Status| DB
     Worker -->|Save Raw JSON| NoSQL[(MongoDB: ocr_vault)]
-    Backend -.->|Hydration (Read JSON)| NoSQL
+    Backend -. Hydration (Read JSON) .-> NoSQL
 ```
 
 ### 🧠 Dettaglio Componenti (Polyglot Persistence)

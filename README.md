@@ -86,7 +86,15 @@ Esegui il comando per compilare e avviare tutti i servizi:
 docker-compose up --build
 ```
 
-### 4. Accesso
+### 4. Creazione Account Admin (prima volta)
+Con i container attivi, apri un secondo terminale ed esegui:
+```bash
+docker-compose exec backend python manage.py createsuperuser
+```
+Segui le istruzioni per impostare email e password dell'amministratore.
+Questo account ti permetterà di accedere alla **Console di Amministrazione** e gestire tutti gli utenti.
+
+### 5. Accesso alla Piattaforma
 - **Pannello Utente:** [http://localhost:3000](http://localhost:3000)
 - **API Backend:** [http://localhost:8000](http://localhost:8000)
 - **Interfaccia OCR:** [http://localhost:8001](http://localhost:8001)

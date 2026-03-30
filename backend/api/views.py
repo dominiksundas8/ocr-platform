@@ -33,7 +33,14 @@ class DocumentListView(generics.ListAPIView):
 
     def get_queryset(self):
         # Questo filtro è un lucchetto formidabile: The Request.User!
-        return Document.objects.filter(user=self.request.user).order_by('-uploaded_at')
+        qs = Document.objects.filter(user=self.request.user).order_by('-uploaded_at')
+        
+        # 🧪 Filtraggio Dinamico: ?status=COMPLETED (o altri stati)
+        status_filter = self.request.query_params.get('status')
+        if status_filter and status_filter != 'ALL':
+            qs = qs.filter(status=status_filter)
+            
+        return qs
 
 class DocumentDetailView(generics.RetrieveDestroyAPIView):
     """Ritorna uno specifico documento solo se appartiene a chi lo richiede o se l'utente è Staff"""

@@ -128,9 +128,14 @@ async def extract_identity(request: Request, file: UploadFile = File(...)):
             }
         }
     except Exception as e:
-        print(f"[Gemini Error]: {str(e)}")
-        # Se fallisce il modello rilevato, proviamo un ultimo tentativo con quello generico
-        return {"status": "error", "error": f"Errore AI ({ACTIVE_MODEL}): {str(e)}"}
+        error_msg = str(e)
+        print(f"[Gemini Error]: {error_msg}")
+        
+        # 🛡️ Hardening: Eleviamo correttamente l'errore HTTP
+        if "429" in error_msg or "ResourceExhausted" in error_msg:
+             raise HTTPException(status_code=429, detail=f"Gemini Rate Limit: {error_msg}")
+        
+        raise HTTPException(status_code=500, detail=f"Errore AI ({ACTIVE_MODEL}): {error_msg}")
 
 @app.get("/")
 def read_root():

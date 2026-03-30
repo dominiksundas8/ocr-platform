@@ -90,8 +90,14 @@ export const authService = {
  * Document Services
  */
 export const documentService = {
-  async getAll(token: string, customUrl?: string) {
-    const url = customUrl || '/api/documents/';
+  async getAll(token: string, customUrl?: string, status?: string) {
+    let url = customUrl || '/api/documents/';
+    
+    // 🛡️ Se c'è un filtro status, lo aggiungiamo alla URL (solo se non stiamo paginando con un customUrl completo)
+    if (status && status !== 'ALL' && !customUrl) {
+      url += `?status=${status}`;
+    }
+    
     return apiFetch<any>(url, { token });
   },
 

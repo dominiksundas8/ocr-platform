@@ -2,8 +2,12 @@ import io
 import os
 import logging
 from django.db import models
+from django.db.models.signals import post_delete
+from django.dispatch import receiver
 from django.core.files.base import ContentFile
 from django.contrib.auth.models import User
+from pymongo import MongoClient
+from bson import ObjectId
 from PIL import Image
 
 logger = logging.getLogger(__name__)
@@ -24,7 +28,8 @@ class Document(models.Model):
     file = models.FileField(upload_to=custom_user_directory_path)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='PENDING')
     error_message = models.TextField(blank=True, null=True, help_text="Eventuale errore del task OCR")
-    ocr_result = models.JSONField(blank=True, null=True, help_text="Risultato JSON OCR")
+    ocr_result = models.JSONField(blank=True, null=True, help_text="Risultato JSON OCR (DEPRECATO - In transizione verso MongoDB)")
+    mongo_result_id = models.CharField(max_length=24, blank=True, null=True, help_text="ID del documento in MongoDB")
     uploaded_at = models.DateTimeField(auto_now_add=True)
 
     def save(self, *args, **kwargs):
@@ -71,3 +76,28 @@ class Document(models.Model):
 
     def __str__(self):
         return f"Doc {self.id} | {self.file.name}"
+
+@receiver(post_delete, sender=Document)
+def cleanup_mongo_document(sender, instance, **kwargs):
+    """
+    Segnale di Cleanup Professionale:
+    Quando un record Document viene eliminato da PostgreSQL, 
+    elimina automaticamente il relativo JSON da MongoDB se presente.
+    """
+    if instance.mongo_result_id:
+        try:
+            mongo_uri = os.environ.get('MONGO_URI')
+            db_name = os.environ.get('MONGO_DB_NAME')
+            if mongo_uri and db_name:
+                client = MongoClient(mongo_uri)
+                db = client[db_name]
+                collection = db['invoices']
+                
+                # Cancellazione effettiva da MongoDB
+                result = collection.delete_one({"_id": ObjectId(instance.mongo_result_id)})
+                if result.deleted_count > 0:
+                    logger.info(f"[Cleanup] Documento MongoDB {instance.mongo_result_id} eliminato dopo rimozione Postgres.")
+                else:
+                    logger.warning(f"[Cleanup] Tentata eliminazione di {instance.mongo_result_id} ma non trovato su MongoDB.")
+        except Exception as e:
+            logger.error(f"[Cleanup] Errore durante l'eliminazione da MongoDB: {e}")

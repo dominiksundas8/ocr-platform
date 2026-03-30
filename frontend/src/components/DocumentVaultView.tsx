@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import DocumentTable from "./DocumentTable";
+import StatusFilterBar from "./StatusFilterBar";
 import { api } from "@/lib/api";
 
 interface DocumentVaultViewProps {
@@ -16,6 +17,7 @@ export default function DocumentVaultView({ userId, isAdminView = false }: Docum
    const [dataPayload, setDataPayload] = useState<{ count: number, next: string | null, previous: string | null, results: any[] }>({ count: 0, next: null, previous: null, results: [] });
    const [loading, setLoading] = useState(true);
    const [pageUrl, setPageUrl] = useState<string | undefined>(undefined);
+   const [currentFilter, setCurrentFilter] = useState("ALL");
 
    useEffect(() => {
       const token = session?.accessToken;
@@ -24,7 +26,7 @@ export default function DocumentVaultView({ userId, isAdminView = false }: Docum
 
          const fetchPromise = isAdminView && userId
             ? api.documents.getAdminDocuments(token, userId)
-            : api.documents.getAll(token, pageUrl);
+            : api.documents.getAll(token, pageUrl, currentFilter);
 
          fetchPromise
             .then(data => {
@@ -36,22 +38,22 @@ export default function DocumentVaultView({ userId, isAdminView = false }: Docum
                setLoading(false);
             });
       }
-   }, [session, pageUrl, isAdminView, userId]);
+   }, [session, pageUrl, isAdminView, userId, currentFilter]);
 
-   if (loading && dataPayload.results.length === 0) return (
-      <div className="py-20 flex flex-col items-center justify-center">
-         <div className="animate-spin h-6 w-6 border-2 border-indigo-500 border-t-transparent rounded-full mb-4"></div>
-         <div className="text-slate-500 text-[10px] font-bold uppercase tracking-widest">
-            Analisi Archivio in corso...
-         </div>
-      </div>
-   );
+   const handleFilterChange = (newStatus: string) => {
+      setPageUrl(undefined); // Resetta paginazione al cambio filtro
+      setCurrentFilter(newStatus);
+   };
+
+   if (loading && dataPayload.results.length === 0) {
+      // Non facciamo nulla, lasciamo che il componente sotto renderizzi il loader
+   }
 
    return (
       <div className="animate-in fade-in duration-500">
 
          {/* HEADER COMPATTO */}
-         <div className="mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+         <div className="mb-4 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
             <div>
                <div className="flex items-center gap-3 mb-1">
                   <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-widest ${isAdminView ? 'bg-amber-500/10 text-amber-500 border border-amber-500/20' : 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20'}`}>
@@ -61,12 +63,6 @@ export default function DocumentVaultView({ userId, isAdminView = false }: Docum
                <h1 className="text-2xl font-bold text-white tracking-tight">
                   Archivio <span className={isAdminView ? "text-amber-500" : "text-indigo-400"}>{isAdminView ? "Ispezionato" : "Documenti"}</span>
                </h1>
-               <p className="text-slate-500 text-xs mt-1">
-                  {isAdminView
-                     ? "Monitoraggio e conformità dei documenti caricati dall'utente selezionato."
-                     : "Scansioni effettuate."
-                  }
-               </p>
             </div>
 
             <div className="card-base px-6 py-3 flex items-baseline gap-2">
@@ -75,8 +71,20 @@ export default function DocumentVaultView({ userId, isAdminView = false }: Docum
             </div>
          </div>
 
+         {/* 🎨 SENIOR FILTER BAR */}
+         {!isAdminView && (
+            <StatusFilterBar 
+               currentFilter={currentFilter} 
+               onFilterChange={handleFilterChange} 
+            />
+         )}
+
          {/* TABELLA */}
-         <DocumentTable documents={dataPayload.results} isAdmin={isAdminView} />
+         <DocumentTable 
+            documents={dataPayload.results} 
+            isAdmin={isAdminView} 
+            isLoading={loading && dataPayload.results.length === 0} 
+         />
 
          {/* PAGINAZIONE RAFFINATA */}
          {dataPayload.count > 0 && (

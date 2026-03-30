@@ -20,16 +20,19 @@ graph TD
         OCR -->|Vision AI| Gemini[Google Gemini AI]
     end
     
-    Backend -->|Data Persistence| DB[(Database: PostgreSQL)]
+    Backend -->|Metadata & Status| DB[(PostgreSQL)]
     Worker -->|Update Status| DB
+    Worker -->|Save Raw JSON| NoSQL[(MongoDB: ocr_vault)]
+    Backend -.->|Hydration (Read JSON)| NoSQL
 ```
 
-### 🧠 Dettaglio Componenti
-1.  **Frontend (Next.js 15 + Tailwind):** Interfaccia High-Density per massimizzare l'efficienza degli operatori. Gestisce sessioni sicure e polling dinamico.
-2.  **Core Backend (Django 4.2):** L'orchestratore centrale. Gestisce la logica di business, la sicurezza JWT e le migrazioni del database.
-3.  **Task Engine (Celery + Redis):** Gestisce il processamento OCR in background, permettendo alla UI di rimanere fluida e reattiva.
-4.  **OCR AI Engine (FastAPI):** Microservizio bridge dedicato esclusivamente all'integrazione AI, isolando la logica di visione artificiale dal core.
-5.  **Persistence Layer (PostgreSQL):** Database relazionale di classe enterprise per la conservazione sicura di anagrafiche, metadati e risultati OCR.
+### 🧠 Dettaglio Componenti (Polyglot Persistence)
+1.  **Frontend (Next.js 15 + Tailwind):** Interfaccia High-Density per massimizzare l'efficienza degli operatori. Gestisce sessioni sicure, polling dinamico e implementa **Ghost Loading** (Skeleton UI) per transizioni fluide.
+2.  **Core Backend (Django 4.2):** L'orchestratore centrale. Gestisce logica di business, sicurezza JWT e utilizza il pattern di **Hydration** per interrogare MongoDB solo on-demand.
+3.  **Task Engine (Celery + Redis):** Gestisce il processamento OCR in background. Implementa retry intelligenti e procedure "Fail-Fast" per limitazioni API (Rate Limit).
+4.  **OCR AI Engine (FastAPI):** Microservizio bridge isolato per la logica di visione, centralizzando la gestione tipizzata degli errori HTTP (429/500).
+5.  **Relational Database (PostgreSQL):** Conservazione sicura (ACID) di anagrafiche utente, metadati e puntatori logici (ID) ai documenti esterni.
+6.  **NoSQL Vault (MongoDB):** Storage Documentale isolato ad alte prestazioni, accessibile solo via credenziali ridotte (`ocr_user`), dedicato al salvataggio massivo dei payload JSON dell'OCR.
 
 ---
 
@@ -40,8 +43,9 @@ graph TD
 - **Async Processing:** L'utente può caricare più fatture e continuare a lavorare mentre il sistema le elabora in background.
 
 ### 🗃️ Vault Contabile (Archivio)
-- **High-Density Data Tables:** Viste compatte che permettono di visualizzare centinaia di record in una singola schermata.
-- **Status Badges:** Indicatori cromatici istantanei sulla validità dei documenti e sullo stato della scansione (PROCESSING, COMPLETED, FAILED).
+- **High-Density Data Tables:** Viste compatte per visualizzare centinaia di record in una singola schermata.
+- **Dynamic Status Chips:** Barra di filtraggio interattiva in tempo reale per stato (In Coda, Completati, Falliti), integrata a pieno col Database.
+- **Ghost Loading (Skeleton UI):** Esperienza d'attesa Premium ("Granular Shimmer") che mantiene intatto il layout della pagina, animando il corpo della tabella a 60fps per azzerare sfarfallamenti visivi (CLS mitigato).
 
 ### 👮 Console di Amministrazione (Radar Control)
 - **User Management:** Monitoraggio totale degli operatori registrati.
@@ -55,6 +59,8 @@ graph TD
 ocr_project/
 ├── .env                # Configurazione UNIFICATA (Root)
 ├── docker-compose.yml  # Orchestrazione Multi-Container
+├── mongodb/            # Configurazione Vault NoSQL
+│   └── init-mongo.js   # Script Hardening: Ruoli e privilegi (Least Privilege)
 ├── backend/            # Django Core (Modelli, API, Auth)
 │   ├── api/            # Logica Documenti, Tasks Celery & Test
 │   │   ├── tasks.py    # Logica di resilienza OCR (Celery)
@@ -79,9 +85,14 @@ ocr_project/
 - **Silent Refresh**: La sessione si rinnova automaticamente in background (Sliding Window), garantendo un'esperienza fluida.
 - **Internal Secret Protection**: Comunicazione Backend-OCR protetta da header `X-Internal-Secret`.
 
-### ⚙️ Tolleranza ai Guasti
-- **Automatic Retry Logic**: Il sistema gestisce autonomamente i fallimenti delle API esterne con **3 tentativi di recupero** automatici gestiti da Celery.
-- **Data Cleanup**: Sistemi di eliminazione automatica dei file media non più referenziati per ottimizzare lo storage.
+### 🛡️ Polyglot Hardening (Sicurezza Dati Ibrida)
+- **Least Privilege NoSQL:** MongoDB è inizializzato con uno script isolato (`init-mongo.js`) che crea un'utenza dedicata (`ocr_user`) blindata al solo database `ocr_vault` ("readWrite").
+- **Network Isolation:** La porta interna di MongoDB (27017) NON è esposta all'host docker; vive irraggiungibile nella rete interna privata.
+- **Ownership Verification (Cross-Check):** L'API Django, in fase di estrazione dati NoSQL ("Hydration"), applica un check crittografico validando che il campo `user_id` del JSON Mongo coincida strettamente col token JWT autenticato (Previene ID Guessing).
+
+### ⚙️ Tolleranza ai Guasti & Integrità Relazionale
+- **Atomic Cleanup (Signals):** Trigger asincrono (Post Delete); l'eliminazione di un documento Postgres innesca la rimozione atomica e simultanea della foto residente su disco e del JSON "pesante" parcheggiato in MongoDB, scongiurando dati orfani.
+- **Intelligent Fail-Fast su Rate Limit:** Il layer Celery intercetta le Quote Esaurite di Gemini ("429 Too Many Requests") tranciando immediatamente i retries e declassando la fattura a "FAILED", preservando code di calcolo ed evitando all'utente loop di caricamento infiniti.
 
 ### 🧪 Suite di Test
 - **Pytest Suite**: Oltre 30 test automatizzati verificano l'isolamento dei dati, l'autenticazione e la logica asincrona dei task.

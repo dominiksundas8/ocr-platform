@@ -1,14 +1,16 @@
 "use client";
 
 import Link from "next/link";
+import SkeletonRow from "./SkeletonRow";
 
 interface DocumentTableProps {
   documents: any[];
   isAdmin?: boolean;
+  isLoading?: boolean;
 }
 
-export default function DocumentTable({ documents, isAdmin = false }: DocumentTableProps) {
-  if (!documents || documents.length === 0) {
+export default function DocumentTable({ documents, isAdmin = false, isLoading = false }: DocumentTableProps) {
+  if (!isLoading && (!documents || documents.length === 0)) {
     return (
       <div className="card-base p-16 text-center border-dashed border-white/10">
          <div className="w-12 h-12 bg-slate-800 rounded-xl flex items-center justify-center mx-auto mb-4 border border-white/5">
@@ -67,68 +69,74 @@ export default function DocumentTable({ documents, isAdmin = false }: DocumentTa
             </tr>
           </thead>
           <tbody className="divide-y divide-white/5">
-            {documents.map((doc: any) => {
-              const kyc = doc.ocr_result?.extracted_data?.campi_strutturati || {};
-              const config = getStatusConfig(doc.status);
-              const isCompleted = doc.status === 'COMPLETED';
-              
-              return (
-                <tr key={doc.id} className="hover:bg-white/[0.02] transition-colors group/row">
-                  {/* STATUS */}
-                  <td className="px-6 py-4">
-                    <div className="flex items-center">
-                       <span className={`w-2 h-2 rounded-full mr-3 shadow-sm ${config.color}`}></span>
-                       <span className={`text-[10px] font-bold uppercase tracking-tighter ${config.textColor}`}>
-                          {config.text}
-                       </span>
-                    </div>
-                  </td>
-
-                  {/* FORNITORE */}
-                  <td className="px-6 py-4">
-                    <div className="font-semibold text-slate-100 text-sm truncate max-w-[200px]">
-                       {isCompleted ? (kyc?.fornitore?.nome || "Sconosciuto") : "---"}
-                    </div>
-                    <div className="text-[10px] text-slate-500 font-mono mt-0.5">
-                       {isCompleted ? (kyc?.dati_fattura?.numero ? `Fatt. #${kyc.dati_fattura.numero}` : "Senza Numero") : "Fattura in estrazione"}
-                    </div>
-                  </td>
-
-                  {/* IMPORTO */}
-                  <td className="px-6 py-4">
-                     {isCompleted ? (
-                        <div className="flex items-baseline gap-1">
-                           <span className="text-sm font-bold text-indigo-300 font-mono">
-                              {kyc?.totali?.totale_da_pagare?.toFixed(2) || "0.00"}
+            {isLoading ? (
+               Array.from({ length: 5 }).map((_, i) => (
+                  <SkeletonRow key={i} columns={5} />
+               ))
+            ) : (
+               documents.map((doc: any) => {
+               const kyc = doc.ocr_result?.extracted_data?.campi_strutturati || {};
+               const config = getStatusConfig(doc.status);
+               const isCompleted = doc.status === 'COMPLETED';
+               
+               return (
+                  <tr key={doc.id} className="hover:bg-white/[0.02] transition-colors group/row">
+                     {/* STATUS */}
+                     <td className="px-6 py-4">
+                     <div className="flex items-center">
+                           <span className={`w-2 h-2 rounded-full mr-3 shadow-sm ${config.color}`}></span>
+                           <span className={`text-[10px] font-bold uppercase tracking-tighter ${config.textColor}`}>
+                              {config.text}
                            </span>
-                           <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">
-                              {kyc?.totali?.valuta || "EUR"}
-                           </span>
-                        </div>
-                     ) : (
-                        <div className="h-4 w-16 bg-slate-800/50 rounded animate-pulse"></div>
-                     )}
-                  </td>
+                     </div>
+                     </td>
 
-                  {/* DATA SCANSIONE */}
-                  <td className="px-6 py-4 text-center">
-                    <div className="text-slate-200 text-xs font-medium">{new Date(doc.uploaded_at).toLocaleDateString('it-IT')}</div>
-                    <div className="text-[10px] text-slate-500 mt-0.5">{new Date(doc.uploaded_at).toLocaleTimeString('it-IT', {hour: '2-digit', minute:'2-digit'})}</div>
-                  </td>
+                     {/* FORNITORE */}
+                     <td className="px-6 py-4">
+                     <div className="font-semibold text-slate-100 text-sm truncate max-w-[200px]">
+                           {isCompleted ? (kyc?.fornitore?.nome || "Sconosciuto") : "---"}
+                     </div>
+                     <div className="text-[10px] text-slate-500 font-mono mt-0.5">
+                           {isCompleted ? (kyc?.dati_fattura?.numero ? `Fatt. #${kyc.dati_fattura.numero}` : "Senza Numero") : "Fattura in estrazione"}
+                     </div>
+                     </td>
 
-                  {/* AZIONE */}
-                  <td className="px-6 py-4 text-right">
-                     <Link 
-                        href={`/dashboard/documents/${doc.id}`}
-                        className={`inline-flex items-center gap-1.5 text-xs font-bold transition-all px-3 py-1.5 rounded-md ${isAdmin ? 'text-amber-500 hover:bg-amber-500/10' : 'text-indigo-400 hover:bg-indigo-500/10'}`}
-                     >
-                        <span>{isAdmin ? "Ispeziona" : "Dettagli"}</span>
-                        <svg className="w-3 h-3 group-hover/row:translate-x-0.5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 5l7 7-7 7"></path></svg>
-                     </Link>
-                  </td>
-                </tr>
-              );
-            })}
+                     {/* IMPORTO */}
+                     <td className="px-6 py-4">
+                        {isCompleted ? (
+                           <div className="flex items-baseline gap-1">
+                              <span className="text-sm font-bold text-indigo-300 font-mono">
+                                 {kyc?.totali?.totale_da_pagare?.toFixed(2) || "0.00"}
+                              </span>
+                              <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">
+                                 {kyc?.totali?.valuta || "EUR"}
+                              </span>
+                           </div>
+                        ) : (
+                           <div className="h-4 w-16 bg-slate-800/50 rounded animate-pulse"></div>
+                        )}
+                     </td>
+
+                     {/* DATA SCANSIONE */}
+                     <td className="px-6 py-4 text-center">
+                     <div className="text-slate-200 text-xs font-medium">{new Date(doc.uploaded_at).toLocaleDateString('it-IT')}</div>
+                     <div className="text-[10px] text-slate-500 mt-0.5">{new Date(doc.uploaded_at).toLocaleTimeString('it-IT', {hour: '2-digit', minute:'2-digit'})}</div>
+                     </td>
+
+                     {/* AZIONE */}
+                     <td className="px-6 py-4 text-right">
+                        <Link 
+                           href={`/dashboard/documents/${doc.id}`}
+                           className={`inline-flex items-center gap-1.5 text-xs font-bold transition-all px-3 py-1.5 rounded-md ${isAdmin ? 'text-amber-500 hover:bg-amber-500/10' : 'text-indigo-400 hover:bg-indigo-500/10'}`}
+                        >
+                           <span>{isAdmin ? "Ispeziona" : "Dettagli"}</span>
+                           <svg className="w-3 h-3 group-hover/row:translate-x-0.5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 5l7 7-7 7"></path></svg>
+                        </Link>
+                     </td>
+                  </tr>
+               );
+               })
+            )}
           </tbody>
         </table>
       </div>

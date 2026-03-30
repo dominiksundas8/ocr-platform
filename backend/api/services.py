@@ -32,6 +32,11 @@ class OCRService:
             if response.status_code == 200:
                 data = response.json()
                 
+                # 🛡️ Hardening: Controllo preventivo se il microservizio ha girato un errore Gemini
+                if data.get('status') == 'error':
+                    logger.error(f"Errore logico nell'OCR: {data.get('error')}")
+                    return False, data.get('error'), "OCR_LOGIC_ERROR"
+
                 # Validazione KYC: se non è un documento d'identità, lo scartiamo
                 if not data.get('valid_id', True):
                     logger.warning(f"Documento {doc_record.id} scartato: non è una fattura valida.")
@@ -40,6 +45,11 @@ class OCRService:
                 # Successo: ritorniamo il risultato, salvataggio delegato al chiamante
                 logger.info(f"OCR completato con successo per documento {doc_record.id}")
                 return True, data, None
+            
+            elif response.status_code == 429:
+                # 🛡️ Hardening: Mappatura specifica errore di quota
+                logger.warning(f"Rate Limit superato su FastAPI: {response.text}")
+                return False, "Limite quota superato (Gemini).", "RATE_LIMIT"
             
             else:
                 logger.error(f"Errore FastAPI (Status {response.status_code}): {response.text}")

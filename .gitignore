@@ -1,0 +1,46 @@
+# Environment Variables (IMPORTANT: Never commit these)
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+*.env
+**/.env
+**/.env.*
+
+# Python / Django
+__pycache__/
+*.py[cod]
+*$py.class
+backend/db.sqlite3
+backend/media/
+backend/static_root/
+.venv/
+env/
+venv/
+ENV/
+
+# Node / Next.js
+node_modules/
+frontend/.next/
+frontend/out/
+frontend/build/
+.npm
+.eslintcache
+
+# Docker
+.docker/
+docker-compose.override.yml
+
+# Debug / Test output (non pubblicare)
+lint_output.txt
+lint_output_utf8.txt
+backend/test.py
+
+# OS / IDE
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+*.bak

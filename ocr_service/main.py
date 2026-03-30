@@ -64,22 +64,40 @@ async def extract_identity(request: Request, file: UploadFile = File(...)):
         model = genai.GenerativeModel(ACTIVE_MODEL)
         
         prompt = """
-        Analizza con attenzione questa immagine di un documento d'identità (Patente di Guida o Carta d'Identità Elettronica). 
-        Estrai i dati richiesti e rispondi rigorosamente con un oggetto JSON valido:
+        Analizza con la massima precisione questa immagine di un documento commerciale (FATTURA, ORDINE, PREVENTIVO, SCONTRINO o RICEVUTA).
+        Estrai i dati commerciali e finanziari richiesti e rispondi rigorosamente con un oggetto JSON valido.
+        
         {
-          "document_type": "Patente di Guida | Carta d'Identità",
-          "persona_nome": "Nome/i (es: MARIO ALBERTO)",
-          "persona_cognome": "Cognome (es: ROSSI)",
-          "documento_numero": "Senza spazi (es: CA00000AZ o U1234567X)",
-          "data_nascita": "GG/MM/AAAA",
-          "luogo_nascita": "Comune o Stato (es: ROMA)",
-          "sesso": "M | F",
-          "scadenza": "GG/MM/AAAA",
-          "rilasciato_da": "Ente (es: Comune di Milano o MIT)",
-          "is_identity_document": true/false
+          "is_invoice": true/false, // Imposta a true se è una fattura, un ordine, una ricevuta, uno scontrino o un documento contabile simile.
+          "document_type": "Fattura | Conferma d'ordine | Preventivo | Ricevuta | Scontrino",
+          "fornitore": {
+            "nome": "Ragione Sociale o Nome del Venditore",
+            "piva": "Partita IVA o Tax ID (se visibile)",
+            "indirizzo": "Indirizzo completo (se visibile)"
+          },
+          "dati_fattura": {
+            "numero": "Numero del documento (es. Nr ordine, Nr Fattura)",
+            "data": "Avalaible format: YYYY-MM-DD",
+            "scadenza": "Avalaible format: YYYY-MM-DD"
+          },
+          "totali": {
+            "imponibile": 120.50,
+            "tasse": 26.51,
+            "totale_da_pagare": 147.01,
+            "valuta": "EUR | USD | ecc"
+          },
+          "righe": [
+            {
+              "descrizione": "Nome prodotto, servizio o denominazione",
+              "quantita": 1,
+              "prezzo_unitario": 120.50,
+              "prezzo_totale": 120.50
+            }
+          ]
         }
         
-        Se l'immagine non è una Patente di Guida o una Carta d'Identità Elettronica (CIE) allora is_identity_document deve essere false. Il passaporto NON è un documento supportato.
+        ATTENZIONE: Imposta is_invoice su FALSE **solo** se l'immagine è chiaramente una foto personale, un paesaggio o qualcosa di totalmente estraneo alla contabilità aziendale/ordini commerciali.
+        I valori numerici in 'totali' e 'righe' devono essere float calcolati o trascritti e non devono contenere la valuta (euro, $, ecc).
         """
         
         image_parts = [
@@ -98,8 +116,8 @@ async def extract_identity(request: Request, file: UploadFile = File(...)):
             if "```json" in text: text = text.split("```json")[1].split("```")[0].strip()
             ai_data = json.loads(text)
 
-        if not ai_data.get("is_identity_document", True):
-             return {"status": "invalid", "valid_id": False, "error": "Documento non riconosciuto dall'IA"}
+        if not ai_data.get("is_invoice", True):
+             return {"status": "invalid", "valid_id": False, "error": "Documento non riconosciuto come FATTURA."}
 
         return {
             "status": "success",

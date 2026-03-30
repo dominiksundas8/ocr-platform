@@ -32,7 +32,7 @@ export default function KYCUploadPage() {
   };
 
   const handleUpload = async () => {
-    const token = (session as any)?.accessToken;
+    const token = session?.accessToken;
     if (!file || !token) {
       setErrorMsg("Seleziona un documento valido.");
       return;
@@ -57,7 +57,7 @@ export default function KYCUploadPage() {
     <div className="max-w-xl mx-auto py-12 animate-in fade-in slide-in-from-top-4 duration-500">
       <div className="text-center mb-12">
         <h1 className="text-2xl font-bold text-white mb-2 tracking-tight">Centro Operativo Estrazione</h1>
-        <p className="text-slate-400 text-sm">Carica documenti d'identità o passaporti per l'analisi OCR automatizzata.</p>
+        <p className="text-slate-400 text-sm">Carica fatture, ordini o documenti contabili per l'analisi OCR automatizzata.</p>
       </div>
 
       <div className="card-base p-8 text-center flex flex-col items-center">

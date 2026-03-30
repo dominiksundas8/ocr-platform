@@ -14,8 +14,12 @@ class OCRService:
     
     @staticmethod
     def process_document(doc_record: Document, content_type: str):
-        ocr_url = os.environ.get('FASTAPI_OCR_URL', 'http://ocr_service:8001/extract')
-        internal_secret = os.environ.get('INTERNAL_API_SECRET', '')
+        ocr_url = os.environ.get('FASTAPI_OCR_URL')
+        internal_secret = os.environ.get('INTERNAL_API_SECRET')
+        
+        if not ocr_url:
+            logger.error("ERRORE CRITICO: FASTAPI_OCR_URL non impostata nel .env")
+            return False, "Configurazione OCR mancante.", "CONFIG_ERROR"
         
         logger.info(f"Inizio elaborazione OCR per documento {doc_record.id}")
         
@@ -31,21 +35,16 @@ class OCRService:
                 # Validazione KYC: se non è un documento d'identità, lo scartiamo
                 if not data.get('valid_id', True):
                     logger.warning(f"Documento {doc_record.id} scartato: non è una fattura valida.")
-                    doc_record.delete()
-                    return None, "Documento non riconosciuto come fattura valida.", "INVALID_DOCUMENT"
+                    return False, "Documento non riconosciuto come fattura valida.", "INVALID_DOCUMENT"
                 
-                # Successo: salviamo il risultato
-                doc_record.ocr_result = data
-                doc_record.save()
+                # Successo: ritorniamo il risultato, salvataggio delegato al chiamante
                 logger.info(f"OCR completato con successo per documento {doc_record.id}")
-                return DocumentSerializer(doc_record).data, None, None
+                return True, data, None
             
             else:
                 logger.error(f"Errore FastAPI (Status {response.status_code}): {response.text}")
-                doc_record.delete()
-                return None, f"Motore OCR Offline: {response.status_code}", "OCR_OFFLINE"
+                return False, f"Motore OCR Offline: {response.status_code}", "OCR_OFFLINE"
                 
         except requests.exceptions.RequestException as e:
             logger.error(f"Errore di connessione a FastAPI: {str(e)}")
-            doc_record.delete()
-            return None, "Impossibile connettersi al motore OCR.", "CONNECTION_ERROR"
+            return False, "Impossibile connettersi al motore OCR.", "CONNECTION_ERROR"

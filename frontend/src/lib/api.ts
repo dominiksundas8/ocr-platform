@@ -5,8 +5,15 @@
 
 const IS_SERVER = typeof window === 'undefined';
 
-// Use 'backend' inside Docker, 'localhost' on the browser.
-const BASE_URL = IS_SERVER ? 'http://backend:8000' : 'http://localhost:8000';
+// Nelle chiamate server-side (es. NextAuth), usiamo il nome del servizio Docker
+// Nelle chiamate client-side (browser), usiamo l'URL pubblico.
+const BASE_URL = IS_SERVER 
+  ? (process.env.BACKEND_URL || "http://backend:8000")
+  : (process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000");
+
+if (!BASE_URL && !IS_SERVER) {
+  console.warn("ATTENZIONE: NEXT_PUBLIC_BACKEND_URL non definita nel .env");
+}
 
 interface FetchOptions extends RequestInit {
   token?: string;
@@ -68,6 +75,13 @@ export const authService = {
     return apiFetch('/auth/login/', {
       method: 'POST',
       body: JSON.stringify(credentials),
+    });
+  },
+
+  async refresh(refreshToken: string) {
+    return apiFetch<any>('/auth/token/refresh/', {
+      method: 'POST',
+      body: JSON.stringify({ refresh: refreshToken }),
     });
   }
 };

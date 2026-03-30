@@ -11,6 +11,7 @@ from django.contrib.auth.models import User
 from .models import Document
 from .serializers import DocumentSerializer, AdminUserSerializer, CustomUserDetailsSerializer
 from .services import OCRService
+from .tasks import process_document_task
 
 # Configura il logger
 logger = logging.getLogger(__name__)
@@ -99,16 +100,14 @@ class UploadDocumentView(APIView):
         if file_obj.content_type not in ALLOWED_TYPES:
             return Response({"error": f"Formato non ammesso. Accettiamo PDF, JPG, PNG."}, status=400)
         
-        # 1. Creazione record (Pillow compresserà le foto automaticamente nel model.save())
-        doc_record = Document.objects.create(user=request.user, file=file_obj)
+        # 1. Creazione record pendente (Pillow compresserà le foto automaticamente)
+        doc_record = Document.objects.create(user=request.user, file=file_obj, status='PENDING')
         
-        # 2. Elaborazione tramite Service Layer
-        data, error, error_code = OCRService.process_document(doc_record, file_obj.content_type)
+        # 2. Inoltro del job in coda asincrona (Celery Broker)
+        process_document_task.delay(doc_record.id, file_obj.content_type)
         
-        if error:
-            return Response({"error": error, "code": error_code}, status=400)
-            
+        # 3. Ritorna istantaneamente 202 Accepted al frontend
         return Response({
-            "message": "Scansione KYC Completata!",
-            "document": data
-        })
+            "message": "Fattura in elaborazione, attendere il completamento.",
+            "document": DocumentSerializer(doc_record).data
+        }, status=202)

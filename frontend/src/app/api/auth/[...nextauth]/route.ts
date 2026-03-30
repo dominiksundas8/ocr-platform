@@ -2,6 +2,29 @@ import NextAuth from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { api } from "@/lib/api";
 
+/**
+ * Helper per il refresh del token JWT di Django tramite l'endpoint del backend.
+ */
+async function refreshAccessToken(token: any) {
+  try {
+    const refreshedTokens = await api.auth.refresh(token.refreshToken);
+
+    return {
+      ...token,
+      accessToken: refreshedTokens.access,
+      // Se il backend ruota anche il refresh token, lo aggiorniamo qui
+      refreshToken: refreshedTokens.refresh ?? token.refreshToken,
+      expiresAt: Math.floor(Date.now() / 1000) + 45 * 60 - 30, // 45 min meno 30 secondi di buffer
+    };
+  } catch (error) {
+    console.error("Errore nel refresh del token:", error);
+    return {
+      ...token,
+      error: "RefreshAccessTokenError",
+    };
+  }
+}
+
 const handler = NextAuth({
   providers: [
     CredentialsProvider({
@@ -19,8 +42,9 @@ const handler = NextAuth({
                 id: data.user.pk,
                 email: data.user.email,
                 accessToken: data.access,
+                refreshToken: data.refresh, // Salviamo anche il refresh token
                 isStaff: data.user.is_staff,
-             } as any;
+             };
           }
           return null;
         } catch (e) {
@@ -32,16 +56,32 @@ const handler = NextAuth({
   ],
   callbacks: {
     async jwt({ token, user }: any) {
+      // Al login iniziale
       if (user) {
         token.accessToken = user.accessToken;
+        token.refreshToken = user.refreshToken;
         token.isStaff = user.isStaff;
+        // Scadenza stimata (45 min)
+        token.expiresAt = Math.floor(Date.now() / 1000) + 45 * 60 - 30;
+        return token;
       }
-      return token;
+
+      // Se il token non è ancora scaduto, ritornalo
+      if (Math.floor(Date.now() / 1000) < (token.expiresAt as number)) {
+        return token;
+      }
+
+      // Se il token è scaduto, prova il refresh
+      return refreshAccessToken(token);
     },
     async session({ session, token }: any) {
-      (session as any).accessToken = token.accessToken;
+      session.accessToken = token.accessToken;
+      session.refreshToken = token.refreshToken;
+      session.expiresAt = token.expiresAt;
+      session.error = token.error;
+      
       if (session.user) {
-         (session.user as any).isStaff = token.isStaff;
+         session.user.isStaff = token.isStaff;
       }
       return session;
     }

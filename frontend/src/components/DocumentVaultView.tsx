@@ -18,7 +18,7 @@ export default function DocumentVaultView({ userId, isAdminView = false }: Docum
    const [pageUrl, setPageUrl] = useState<string | undefined>(undefined);
 
    useEffect(() => {
-      const token = (session as any)?.accessToken;
+      const token = session?.accessToken;
       if (token) {
          setLoading(true);
 

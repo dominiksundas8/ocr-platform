@@ -11,7 +11,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'django-insecure-default-key')
 DEBUG = os.environ.get('DJANGO_DEBUG', 'True') == 'True'
-ALLOWED_HOSTS = ['*']
+ALLOWED_HOSTS = os.environ.get('DJANGO_ALLOWED_HOSTS', 'localhost,127.0.0.1,0.0.0.0').split(',')
 
 # ... (INSTALLED_APPS rimane uguale)
 INSTALLED_APPS = [
@@ -37,6 +37,7 @@ INSTALLED_APPS = [
     
     # Custom Apps
     'api',
+    'rest_framework_simplejwt.token_blacklist',
 ]
 
 MIDDLEWARE = [
@@ -157,8 +158,10 @@ REST_AUTH = {
 }
 
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=120),
-    'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=45),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=14),
+    'ROTATE_REFRESH_TOKENS': True,
+    'BLACKLIST_AFTER_ROTATION': True,
 }
 
 SITE_ID = 1
@@ -175,3 +178,27 @@ AUTHENTICATION_BACKENDS = (
 
 # Stampa le email vere di conferma nel terminale! Utile in Dev.
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+
+# ------------------------------------------------------------------------------
+# CELERY E REDIS
+# ------------------------------------------------------------------------------
+
+# L'indirizzo del broker è passato via docker-compose (obbligatorio)
+CELERY_BROKER_URL = os.environ.get('CELERY_BROKER_URL')
+
+if not CELERY_BROKER_URL:
+    if DEBUG:
+        CELERY_BROKER_URL = 'redis://localhost:6379/0'
+    else:
+        raise ValueError("CELERY_BROKER_URL non impostata in produzione!")
+
+# Diciamo a Celery di salvare i risultati dei task su DB o Redis
+CELERY_RESULT_BACKEND = CELERY_BROKER_URL
+
+# Sincronizza timezone di celery per evitare offset nei log
+CELERY_TIMEZONE = TIME_ZONE
+
+# Formato JSON (standard)
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_SERIALIZER = 'json'

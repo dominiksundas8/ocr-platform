@@ -22,11 +22,21 @@ ENV/
 
 # Node / Next.js
 node_modules/
-frontend/.next/
-frontend/out/
-frontend/build/
+**/node_modules/
+**/.next/
+**/out/
+**/build/
+.next/
 .npm
 .eslintcache
+.pnp
+.pnp.*
+.vercel
+*.tsbuildinfo
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
 
 # Docker
 .docker/

@@ -14,8 +14,16 @@ def custom_user_directory_path(instance, filename):
     return f'documents/user_{instance.user.id}/{filename}'
 
 class Document(models.Model):
+    STATUS_CHOICES = [
+        ('PENDING', 'In Coda'),
+        ('PROCESSING', 'In Elaborazione'),
+        ('COMPLETED', 'Completato'),
+        ('FAILED', 'Fallito'),
+    ]
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='documents')
     file = models.FileField(upload_to=custom_user_directory_path)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='PENDING')
+    error_message = models.TextField(blank=True, null=True, help_text="Eventuale errore del task OCR")
     ocr_result = models.JSONField(blank=True, null=True, help_text="Risultato JSON OCR")
     uploaded_at = models.DateTimeField(auto_now_add=True)
 

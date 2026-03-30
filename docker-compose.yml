@@ -22,42 +22,67 @@ services:
         retries: 5
 
   # ----------------------------------------
+  # REDIS: Message Broker (Celery Queue)
+  # ----------------------------------------
+  redis:
+      image: redis:7-alpine
+      restart: always
+      ports:
+        - "6379:6379"
+      healthcheck:
+        test: ["CMD", "redis-cli", "ping"]
+        interval: 5s
+        timeout: 3s
+        retries: 5
+
+  # ----------------------------------------
   # DJANGO: Backend Principale e Orchestratore
   # ----------------------------------------
   backend:
       build: ./backend
-      command: sh -c "python manage.py makemigrations api --no-input && python manage.py migrate --no-input && python manage.py runserver 0.0.0.0:8000"
+      env_file: .env
+      command: sh -c "python manage.py migrate --no-input && python manage.py runserver 0.0.0.0:8000"
       volumes:
         - ./backend:/app
       ports:
         - "8000:8000"
-      environment:
-        - DATABASE_URL=${DATABASE_URL}
-        - DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY}
-        - DJANGO_DEBUG=${DJANGO_DEBUG}
-        - INTERNAL_API_SECRET=${INTERNAL_API_SECRET}
       depends_on:
-        - db
+        db:
+          condition: service_healthy
+        redis:
+          condition: service_healthy
+
+  # ----------------------------------------
+  # CELERY WORKER: Esecuzione Task Asincroni
+  # ----------------------------------------
+  celery_worker:
+      build: ./backend
+      env_file: .env
+      command: celery -A core worker -l info --pool=solo
+      volumes:
+        - ./backend:/app
+      depends_on:
+        redis:
+          condition: service_healthy
 
   # ----------------------------------------
   # FASTAPI: Microservizio Vision AI (Gemini)
   # ----------------------------------------
   ocr_service:
       build: ./ocr_service
+      env_file: .env
       command: uvicorn main:app --host 0.0.0.0 --port 8001 --reload
       volumes:
         - ./ocr_service:/app
       ports:
         - "8001:8001"
-      environment:
-        - GEMINI_API_KEY=${GEMINI_API_KEY}
-        - INTERNAL_API_SECRET=${INTERNAL_API_SECRET}
 
   # ----------------------------------------
   # NEXT.JS: Interfaccia Utente
   # ----------------------------------------
   frontend:
       build: ./frontend
+      env_file: .env
       command: npm run dev
       volumes:
         - ./frontend:/app
@@ -66,8 +91,6 @@ services:
         - "3000:3000"
       environment:
         - WATCHPACK_POLLING=true
-        - NEXTAUTH_URL=${NEXTAUTH_URL}
-        - NEXTAUTH_SECRET=${NEXTAUTH_SECRET}
 
 volumes:
   postgres_data:

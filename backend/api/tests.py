@@ -167,24 +167,18 @@ class TestUploadValidation:
         response = auth_client_a.post('/api/upload/', {}, format='multipart')
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
-    @patch('api.services.OCRService.process_document')
-    def test_upload_valid_file_success(self, mock_ocr, auth_client_a, user_a, fake_image):
+    @patch('api.views.process_document_task.delay')
+    def test_upload_valid_file_success(self, mock_process_task, auth_client_a, user_a, fake_image):
         """
-        Un file valido viene elaborato correttamente.
-        Il servizio OCR viene MOCKATO per non fare chiamate reali a Gemini durante i test.
+        Un file valido viene preso in carico correttamente con una risposta HTTP 202.
+        Il task in background viene mockato per verificare che .delay() sia chiamato.
         """
-        # Simuliamo una risposta positiva dell'OCR
-        mock_ocr.return_value = (
-            {'id': 1, 'ocr_result': {'document_type': 'Fattura', 'totali': {'totale': 100.0}}},
-            None,   # nessun errore
-            None    # nessun error_code
-        )
-
         response = auth_client_a.post('/api/upload/', {'file': fake_image}, format='multipart')
-        assert response.status_code == status.HTTP_200_OK
+        assert response.status_code == status.HTTP_202_ACCEPTED
         assert 'document' in response.data
-        # Verifichiamo che OCRService sia stato chiamato esattamente una volta
-        mock_ocr.assert_called_once()
+        assert response.data['document']['status'] == 'PENDING'
+        # Verifichiamo che la funzione Celery .delay() sia stata chiamata esattamente una volta
+        mock_process_task.assert_called_once()
 
 
 # ==============================================================================
@@ -224,3 +218,74 @@ class TestAdminPermissions:
         """Un utente non autenticato non può accedere agli endpoint admin."""
         response = api_client.get('/api/admin/users/')
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+
+# ==============================================================================
+# 5. TEST TASK ASINCRONI (CELERY & RESILIENZA)
+# ==============================================================================
+
+class TestCeleryTasks:
+    """
+    Verifica che il task Celery gestisca correttamente l'OCR e i fallimenti.
+    Usiamo mock per evitare di chiamare il microservizio reale.
+    """
+
+    @patch('api.tasks.OCRService.process_document')
+    def test_process_document_task_success(self, mock_ocr, user_a, document_of_user_a, db):
+        """Il task completa con successo se l'OCR risponde OK."""
+        from api.tasks import process_document_task
+        from api.models import Document
+
+        # Mock: risposta positiva dell'OCR
+        mock_ocr.return_value = (True, {"tipo": "Fattura", "totale": 100.0}, None)
+
+        # Eseguiamo la funzione originale slegata (__func__) passando il nostro mock
+        process_document_task.run.__func__(MagicMock(), document_of_user_a.id, "image/jpeg")
+
+        # Verifichiamo il database
+        doc = Document.objects.get(id=document_of_user_a.id)
+        assert doc.status == 'COMPLETED'
+        assert doc.ocr_result['totale'] == 100.0
+        assert doc.error_message is None
+
+    @patch('api.tasks.OCRService.process_document')
+    def test_process_document_task_retry_logic(self, mock_ocr, user_a, document_of_user_a, db):
+        """
+        Il task deve sollevare un'eccezione Retry se l'OCR è offline.
+        Questa è la prova che la nostra logica di resilienza funziona.
+        """
+        from api.tasks import process_document_task
+        from celery.exceptions import Retry
+
+        # Mock: errore di connessione (OCR offline)
+        mock_ocr.return_value = (False, "Service Offline", "CONNECTION_ERROR")
+
+        # Prepariamo un mock del "self" del task Celery
+        mock_task_self = MagicMock()
+        mock_task_self.max_retries = 3
+        mock_task_self.request.retries = 0
+        # Facciamo in modo che .retry() sollevi l'eccezione Retry (comportamento reale di Celery)
+        mock_task_self.retry.side_effect = Retry()
+
+        # Eseguiamo e verifichiamo che venga lanciato Retry
+        with pytest.raises(Retry):
+            process_document_task.run.__func__(mock_task_self, document_of_user_a.id, "image/jpeg")
+
+        # Verifichiamo che il retry sia stato effettivamente chiamato
+        mock_task_self.retry.assert_called_once()
+
+    @patch('api.tasks.OCRService.process_document')
+    def test_process_document_task_final_failure(self, mock_ocr, user_a, document_of_user_a, db):
+        """Se il documento non è valido, il task deve smettere di riprovare e segnare FAILED."""
+        from api.tasks import process_document_task
+        from api.models import Document
+
+        # Mock: errore definitivo (documento non valido)
+        mock_ocr.return_value = (False, "File Corrotto", "INVALID_DOCUMENT")
+
+        process_document_task.run.__func__(MagicMock(), document_of_user_a.id, "image/jpeg")
+
+        # Verifichiamo il database
+        doc = Document.objects.get(id=document_of_user_a.id)
+        assert doc.status == 'FAILED'
+        assert "INVALID_DOCUMENT" in doc.error_message

@@ -22,5 +22,5 @@ class AdminUserSerializer(serializers.ModelSerializer):
 class DocumentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Document
-        fields = ('id', 'user', 'file', 'ocr_result', 'uploaded_at')
-        read_only_fields = ('user',)
+        fields = ('id', 'user', 'file', 'status', 'error_message', 'ocr_result', 'uploaded_at')
+        read_only_fields = ('user', 'status', 'error_message', 'ocr_result')

@@ -10,79 +10,110 @@ interface DocumentTableProps {
 export default function DocumentTable({ documents, isAdmin = false }: DocumentTableProps) {
   if (!documents || documents.length === 0) {
     return (
-      <div className="card-base p-16 text-center border-dashed">
+      <div className="card-base p-16 text-center border-dashed border-white/10">
          <div className="w-12 h-12 bg-slate-800 rounded-xl flex items-center justify-center mx-auto mb-4 border border-white/5">
-            <svg className="w-6 h-6 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"></path></svg>
+            <svg className="w-6 h-6 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
          </div>
-         <h3 className="text-lg font-bold text-white mb-1">Archivio Vuoto</h3>
-         <p className="text-slate-500 text-sm max-w-xs mx-auto">Nessun documento rilevato in questo settore.</p>
+         <h3 className="text-lg font-bold text-white mb-1">Nessuna Fattura</h3>
+         <p className="text-slate-500 text-sm max-w-xs mx-auto">Non hai ancora elaborato alcun documento contabile.</p>
          {!isAdmin && (
-           <Link href="/dashboard" className="btn-primary mt-6">Carica Documento</Link>
+           <Link href="/dashboard" className="btn-primary mt-6 inline-block">Carica Fattura</Link>
          )}
       </div>
     );
   }
 
+  const getStatusConfig = (status: string) => {
+    switch(status) {
+      case 'PENDING':
+      case 'PROCESSING':
+        return { 
+          color: 'bg-amber-500 shadow-amber-500/50', 
+          text: 'In Elaborazione', 
+          textColor: 'text-amber-400' 
+        };
+      case 'FAILED':
+        return { 
+          color: 'bg-red-500 shadow-red-500/50', 
+          text: 'Errore OCR', 
+          textColor: 'text-red-400' 
+        };
+      case 'COMPLETED':
+        return { 
+          color: 'bg-emerald-500 shadow-emerald-500/50', 
+          text: 'Completato', 
+          textColor: 'text-emerald-400' 
+        };
+      default:
+        return { 
+          color: 'bg-slate-500', 
+          text: 'Sconosciuto', 
+          textColor: 'text-slate-400' 
+        };
+    }
+  };
+
   return (
-    <div className="card-base overflow-hidden mb-12">
+    <div className="card-base overflow-hidden mb-12 border border-white/5">
       <div className="overflow-x-auto custom-scrollbar">
         <table className="w-full text-left text-sm text-slate-300">
           <thead className="bg-slate-900/80 text-[10px] uppercase font-bold tracking-widest text-slate-500 border-b border-white/5">
             <tr>
-              <th className="px-6 py-4">Status</th>
-              <th className="px-6 py-4">Documento</th>
-              <th className="px-6 py-4">Intestatario</th>
-              <th className="px-6 py-4 text-center">Scansione</th>
+              <th className="px-6 py-4">Stato Elaborazione</th>
+              <th className="px-6 py-4">Fornitore</th>
+              <th className="px-6 py-4">Importo</th>
+              <th className="px-6 py-4 text-center">Data Scansione</th>
               <th className="px-6 py-4 text-right">Azione</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-white/5">
             {documents.map((doc: any) => {
-              const kyc = doc.ocr_result?.extracted_data?.campi_strutturati;
-              const isLicense = kyc?.document_type?.toLowerCase().includes("patente");
-              const isExpired = kyc?.scadenza && new Date(kyc.scadenza) < new Date();
+              const kyc = doc.ocr_result?.extracted_data?.campi_strutturati || {};
+              const config = getStatusConfig(doc.status);
+              const isCompleted = doc.status === 'COMPLETED';
               
               return (
                 <tr key={doc.id} className="hover:bg-white/[0.02] transition-colors group/row">
                   {/* STATUS */}
                   <td className="px-6 py-4">
                     <div className="flex items-center">
-                       <span className={`w-2 h-2 rounded-full mr-2 ${isExpired ? 'bg-red-500 shadow-sm shadow-red-500/50' : 'bg-emerald-500 shadow-sm shadow-emerald-500/50'}`}></span>
-                       <span className="text-[10px] font-bold uppercase tracking-tighter text-slate-400">
-                          {isExpired ? "Scaduto" : "Analizzato"}
+                       <span className={`w-2 h-2 rounded-full mr-3 shadow-sm ${config.color}`}></span>
+                       <span className={`text-[10px] font-bold uppercase tracking-tighter ${config.textColor}`}>
+                          {config.text}
                        </span>
                     </div>
                   </td>
 
-                  {/* DOCUMENTO & PREVIEW */}
+                  {/* FORNITORE */}
                   <td className="px-6 py-4">
-                     <div className="flex items-center gap-3">
-                        <div className="w-10 h-7 bg-slate-950 rounded border border-white/10 overflow-hidden flex-shrink-0 group-hover/row:border-indigo-500/50 transition-all">
-                           {/* eslint-disable-next-line @next/next/no-img-element */}
-                           <img src={doc.file} alt="Preview" className="w-full h-full object-cover opacity-50 group-hover/row:opacity-100" />
-                        </div>
-                        <div>
-                           <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded border ${isLicense ? 'bg-amber-500/10 border-amber-500/20 text-amber-500' : 'bg-indigo-500/10 border-indigo-500/20 text-indigo-400'}`}>
-                              {kyc?.document_type || "GENERIC"}
+                    <div className="font-semibold text-slate-100 text-sm truncate max-w-[200px]">
+                       {isCompleted ? (kyc?.fornitore?.nome || "Sconosciuto") : "---"}
+                    </div>
+                    <div className="text-[10px] text-slate-500 font-mono mt-0.5">
+                       {isCompleted ? (kyc?.dati_fattura?.numero ? `Fatt. #${kyc.dati_fattura.numero}` : "Senza Numero") : "Fattura in estrazione"}
+                    </div>
+                  </td>
+
+                  {/* IMPORTO */}
+                  <td className="px-6 py-4">
+                     {isCompleted ? (
+                        <div className="flex items-baseline gap-1">
+                           <span className="text-sm font-bold text-indigo-300 font-mono">
+                              {kyc?.totali?.totale_da_pagare?.toFixed(2) || "0.00"}
+                           </span>
+                           <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">
+                              {kyc?.totali?.valuta || "EUR"}
                            </span>
                         </div>
-                     </div>
+                     ) : (
+                        <div className="h-4 w-16 bg-slate-800/50 rounded animate-pulse"></div>
+                     )}
                   </td>
 
-                  {/* IDENTITA */}
-                  <td className="px-6 py-4">
-                    <div className="font-semibold text-slate-100 text-sm truncate max-w-[150px]">
-                       {kyc?.persona_nome} {kyc?.persona_cognome || "N/D"}
-                    </div>
-                    <div className="text-[10px] text-slate-500 font-mono">
-                       #{kyc?.documento_numero || "Senza Numero"}
-                    </div>
-                  </td>
-
-                  {/* DATA */}
+                  {/* DATA SCANSIONE */}
                   <td className="px-6 py-4 text-center">
                     <div className="text-slate-200 text-xs font-medium">{new Date(doc.uploaded_at).toLocaleDateString('it-IT')}</div>
-                    <div className="text-[10px] text-slate-500">{new Date(doc.uploaded_at).toLocaleTimeString('it-IT', {hour: '2-digit', minute:'2-digit'})}</div>
+                    <div className="text-[10px] text-slate-500 mt-0.5">{new Date(doc.uploaded_at).toLocaleTimeString('it-IT', {hour: '2-digit', minute:'2-digit'})}</div>
                   </td>
 
                   {/* AZIONE */}

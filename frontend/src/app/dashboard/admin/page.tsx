@@ -19,7 +19,7 @@ export default function KYCAdminDashboard() {
   const [isDeleting, setIsDeleting] = useState(false);
 
   const fetchData = (url?: string) => {
-    const token = (session as any)?.accessToken;
+    const token = session?.accessToken;
     if (token) {
       setLoading(true);
       api.admin.getUsers(token, url)
@@ -35,7 +35,7 @@ export default function KYCAdminDashboard() {
   };
 
   useEffect(() => {
-    if (status === "authenticated" && !(session?.user as any)?.isStaff) {
+    if (status === "authenticated" && !session?.user?.isStaff) {
       router.push("/dashboard");
       return;
     }
@@ -46,7 +46,7 @@ export default function KYCAdminDashboard() {
   }, [session, pageUrl, status, router]);
 
   const confirmDeleteUser = async () => {
-    const token = (session as any)?.accessToken;
+    const token = session?.accessToken;
     if (!deletingUser || !token) return;
 
     setIsDeleting(true);

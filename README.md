@@ -119,4 +119,4 @@ docker-compose exec backend python manage.py createsuperuser
 - **Interfaccia OCR:** [http://localhost:8001](http://localhost:8001)
 
 ---
-*Manuale Tecnico Aggiornato - DeepEx v2.0*
+*Manuale Tecnico Aggiornato al 30 Marzo 2026*

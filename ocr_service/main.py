@@ -1,12 +1,13 @@
 import os
 import io
 import json
-from fastapi import FastAPI, UploadFile, File
+from fastapi import FastAPI, UploadFile, File, Request, HTTPException
 from pydantic import BaseModel, Field
 import google.generativeai as genai
 
 # Configurazione API Gemini
 API_KEY = os.getenv("GEMINI_API_KEY", "")
+INTERNAL_SECRET = os.getenv("INTERNAL_API_SECRET", "")
 
 # Variabile globale che caricheremo all'avvio
 ACTIVE_MODEL = "gemini-1.5-flash" 
@@ -48,7 +49,11 @@ discover_model()
 app = FastAPI(title="Vision AI KYC Engine")
 
 @app.post("/extract")
-async def extract_identity(file: UploadFile = File(...)):
+async def extract_identity(request: Request, file: UploadFile = File(...)):
+    # Verifica segreto interno: solo Django può chiamare questo endpoint
+    if INTERNAL_SECRET and request.headers.get("X-Internal-Secret") != INTERNAL_SECRET:
+        raise HTTPException(status_code=403, detail="Accesso non autorizzato.")
+
     contents = await file.read()
     
     if not API_KEY:

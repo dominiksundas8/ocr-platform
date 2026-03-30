@@ -14,7 +14,7 @@ def custom_user_directory_path(instance, filename):
     return f'documents/user_{instance.user.id}/{filename}'
 
 class Document(models.Model):
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='documents', null=True) # Messo a null=True MOMENTANEAMENTE per evitare crash migrazione su vecchie tabelle
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='documents')
     file = models.FileField(upload_to=custom_user_directory_path)
     ocr_result = models.JSONField(blank=True, null=True, help_text="Risultato JSON OCR")
     uploaded_at = models.DateTimeField(auto_now_add=True)

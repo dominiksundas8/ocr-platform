@@ -65,7 +65,7 @@ export const authService = {
   },
   
   async login(credentials: any) {
-    return apiFetch('http://backend:8000/auth/login/', {
+    return apiFetch('/auth/login/', {
       method: 'POST',
       body: JSON.stringify(credentials),
     });

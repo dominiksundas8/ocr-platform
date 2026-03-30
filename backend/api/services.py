@@ -15,23 +15,24 @@ class OCRService:
     @staticmethod
     def process_document(doc_record: Document, content_type: str):
         ocr_url = os.environ.get('FASTAPI_OCR_URL', 'http://ocr_service:8001/extract')
+        internal_secret = os.environ.get('INTERNAL_API_SECRET', '')
         
         logger.info(f"Inizio elaborazione OCR per documento {doc_record.id}")
         
         try:
             with doc_record.file.open('rb') as f:
                 files = {'file': (doc_record.file.name, f.read(), content_type)}
-                # Timeout generoso per la prima esecuzione (download modelli)
-                response = requests.post(ocr_url, files=files, timeout=120)
+                headers = {'X-Internal-Secret': internal_secret}
+                response = requests.post(ocr_url, files=files, headers=headers, timeout=120)
                 
             if response.status_code == 200:
                 data = response.json()
                 
                 # Validazione KYC: se non è un documento d'identità, lo scartiamo
                 if not data.get('valid_id', True):
-                    logger.warning(f"Documento {doc_record.id} scartato: Non è un'identità valida.")
+                    logger.warning(f"Documento {doc_record.id} scartato: non è una fattura valida.")
                     doc_record.delete()
-                    return None, "Documento non riconosciuto come Carta d'Identità o Passaporto.", "INVALID_IDENTITY"
+                    return None, "Documento non riconosciuto come fattura valida.", "INVALID_DOCUMENT"
                 
                 # Successo: salviamo il risultato
                 doc_record.ocr_result = data

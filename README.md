@@ -1,6 +1,6 @@
 # 🚀 DeepEx: Enterprise-Grade AI Identity Extraction Platform
 
-DeepEx è una soluzione SaaS all'avanguardia progettata per automatizzare l'estrazione e la gestione dei dati dai documenti d'identità (CIE, Patente, Passaporto). Utilizzando modelli di visione artificiale di ultima generazione (**Google Gemini 1.5 Flash**), la piattaforma trasforma immagini grezze in dati strutturati con precisione chirurgica.
+DeepEx è una soluzione SaaS all'avanguardia progettata per automatizzare l'estrazione e la gestione dei dati dai documenti d'identità (**Patente di Guida** e **Carta d'Identità Elettronica**). Utilizzando modelli di visione artificiale di ultima generazione (**Google Gemini 1.5 Flash**), la piattaforma trasforma immagini grezze in dati strutturati con precisione chirurgica.
 
 ---
 

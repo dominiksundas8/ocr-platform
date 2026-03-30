@@ -59,10 +59,10 @@ async def extract_identity(file: UploadFile = File(...)):
         model = genai.GenerativeModel(ACTIVE_MODEL)
         
         prompt = """
-        Analizza con attenzione questa immagine di un documento d'identità (CIE, Patente o Passaporto). 
+        Analizza con attenzione questa immagine di un documento d'identità (Patente di Guida o Carta d'Identità Elettronica). 
         Estrai i dati richiesti e rispondi rigorosamente con un oggetto JSON valido:
         {
-          "document_type": "Patente di Guida | Carta d'Identità | Passaporto",
+          "document_type": "Patente di Guida | Carta d'Identità",
           "persona_nome": "Nome/i (es: MARIO ALBERTO)",
           "persona_cognome": "Cognome (es: ROSSI)",
           "documento_numero": "Senza spazi (es: CA00000AZ o U1234567X)",
@@ -74,7 +74,7 @@ async def extract_identity(file: UploadFile = File(...)):
           "is_identity_document": true/false
         }
         
-        Se l'immagine non è una carta d'identità o patente allora is_identity_document deve essere false.
+        Se l'immagine non è una Patente di Guida o una Carta d'Identità Elettronica (CIE) allora is_identity_document deve essere false. Il passaporto NON è un documento supportato.
         """
         
         image_parts = [

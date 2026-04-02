@@ -8,7 +8,7 @@ export default function SkeletonRow({ columns = 5 }: SkeletonRowProps) {
   return (
     <tr className="bg-transparent border-b border-white/5 last:border-0">
       {Array.from({ length: columns }).map((_, colIndex) => (
-        <td key={colIndex} className="px-6 py-5">
+        <td key={colIndex} className="px-6 py-4">
           <div className="flex items-center gap-3">
             {/* Simula un pallino di stato nella prima colonna */}
             {colIndex === 0 && (

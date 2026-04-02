@@ -202,3 +202,17 @@ CELERY_TIMEZONE = TIME_ZONE
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
+
+# --- Hardening per Alta Concorrenza (Eventlet) ---
+# Aumentiamo i timeout del socket per evitare 'Lookup timed out' sotto stress
+CELERY_BROKER_TRANSPORT_OPTIONS = {
+    'socket_timeout': 30,
+    'socket_connect_timeout': 30,
+    'retry_on_timeout': True,
+    'visibility_timeout': 3600, # 1 ora per task lunghi
+}
+
+# ================================
+# MODELLO UTENTE CUSTOM (UUIDv4)
+# ================================
+AUTH_USER_MODEL = 'api.CustomUser'

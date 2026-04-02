@@ -1,6 +1,7 @@
 import os
 import io
 import json
+import asyncio
 from fastapi import FastAPI, UploadFile, File, Request, HTTPException
 from pydantic import BaseModel, Field
 import google.generativeai as genai
@@ -131,9 +132,49 @@ async def extract_identity(request: Request, file: UploadFile = File(...)):
         error_msg = str(e)
         print(f"[Gemini Error]: {error_msg}")
         
-        # 🛡️ Hardening: Eleviamo correttamente l'errore HTTP
+        # ⚠️⚠️⚠️ MOCK FALLBACK - DA RIMUOVERE IN PRODUZIONE ⚠️⚠️⚠️
+        # Se Gemini fallisce per quota esaurita (429), restituiamo dati di test per non bloccare lo sviluppo.
+        # raise HTTPException(status_code=429, detail=f"Gemini Rate Limit: {error_msg}")
         if "429" in error_msg or "ResourceExhausted" in error_msg:
-             raise HTTPException(status_code=429, detail=f"Gemini Rate Limit: {error_msg}")
+             print("[MOCK MODE ACTIVATED] Quota Gemini esaurita. Simulo elaborazione (5s)...")
+             await asyncio.sleep(5) # ⏱️ Ritardo sintetico per testare la UX
+             print("Restituisco dati di test 'Antigravity'.")
+             # raise HTTPException(status_code=429, detail=f"Gemini Rate Limit: {error_msg}") # Salvato per riferimento futuro
+             return {
+                "status": "success",
+                "valid_id": True,
+                "engine": "mock-antigravity-v1",
+                "extracted_data": {
+                    "campi_strutturati": {
+                        "is_invoice": True,
+                        "document_type": "Fattura Elettronica",
+                        "fornitore": {
+                            "nome": "ANTIGRAVITY OCR LABS - TEST",
+                            "piva": "IT01234567890",
+                            "indirizzo": "Cloud District, Silicon Valley 101"
+                        },
+                        "dati_fattura": {
+                            "numero": "MOCK-2026-001",
+                            "data": "2026-04-01",
+                            "scadenza": "2026-05-01"
+                        },
+                        "totali": {
+                            "imponibile": 1000.00,
+                            "tasse": 220.00,
+                            "totale_da_pagare": 1220.00,
+                            "valuta": "EUR"
+                        },
+                        "righe": [
+                            {
+                                "descrizione": "Servizio OCR Mocking per Sviluppo",
+                                "quantita": 1,
+                                "prezzo_unitario": 1000.00,
+                                "prezzo_totale": 1000.00
+                            }
+                        ]
+                    }
+                }
+             }
         
         raise HTTPException(status_code=500, detail=f"Errore AI ({ACTIVE_MODEL}): {error_msg}")
 

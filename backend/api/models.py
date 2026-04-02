@@ -1,14 +1,26 @@
 import io
 import os
+import uuid
 import logging
+from django.conf import settings
 from django.db import models
 from django.db.models.signals import post_delete
 from django.dispatch import receiver
 from django.core.files.base import ContentFile
-from django.contrib.auth.models import User
+from django.contrib.auth.models import AbstractUser
 from pymongo import MongoClient
 from bson import ObjectId
 from PIL import Image
+
+class CustomUser(AbstractUser):
+    """
+    Modello Utente Personalizzato che usa UUIDv4 come Primary Key.
+    Mantiene tutte le funzionalità standard di auth (password, permessi).
+    """
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+
+    def __str__(self):
+        return self.email or self.username
 
 logger = logging.getLogger(__name__)
 
@@ -24,13 +36,19 @@ class Document(models.Model):
         ('COMPLETED', 'Completato'),
         ('FAILED', 'Fallito'),
     ]
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='documents')
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='documents')
     file = models.FileField(upload_to=custom_user_directory_path)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='PENDING')
     error_message = models.TextField(blank=True, null=True, help_text="Eventuale errore del task OCR")
     ocr_result = models.JSONField(blank=True, null=True, help_text="Risultato JSON OCR (DEPRECATO - In transizione verso MongoDB)")
     mongo_result_id = models.CharField(max_length=24, blank=True, null=True, help_text="ID del documento in MongoDB")
     uploaded_at = models.DateTimeField(auto_now_add=True)
+
+    # Campi Denormalizzati per Performance (Lista/Filtri)
+    supplier_name = models.CharField(max_length=255, blank=True, null=True)
+    total_amount = models.DecimalField(max_digits=12, decimal_places=2, blank=True, null=True)
+    invoice_date = models.DateField(blank=True, null=True)
 
     def save(self, *args, **kwargs):
         # 1. Controlliamo di intercettare il file solo della "prima creazione" e non dei normali "update" a DB.

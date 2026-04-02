@@ -94,10 +94,10 @@ export default function DocumentTable({ documents, isAdmin = false, isLoading = 
                      {/* FORNITORE */}
                      <td className="px-6 py-4">
                      <div className="font-semibold text-slate-100 text-sm truncate max-w-[200px]">
-                           {isCompleted ? (kyc?.fornitore?.nome || "Sconosciuto") : "---"}
+                           {isCompleted ? (doc.supplier_name || "Sconosciuto") : "---"}
                      </div>
-                     <div className="text-[10px] text-slate-500 font-mono mt-0.5">
-                           {isCompleted ? (kyc?.dati_fattura?.numero ? `Fatt. #${kyc.dati_fattura.numero}` : "Senza Numero") : "Fattura in estrazione"}
+                     <div className="text-[10px] text-slate-500 font-mono mt-0.5 uppercase tracking-tight">
+                           {isCompleted ? (doc.invoice_date || "Data non trovata") : "Fattura in estrazione"}
                      </div>
                      </td>
 
@@ -106,10 +106,10 @@ export default function DocumentTable({ documents, isAdmin = false, isLoading = 
                         {isCompleted ? (
                            <div className="flex items-baseline gap-1">
                               <span className="text-sm font-bold text-indigo-300 font-mono">
-                                 {kyc?.totali?.totale_da_pagare?.toFixed(2) || "0.00"}
+                                 {doc.total_amount || "0.00"}
                               </span>
                               <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">
-                                 {kyc?.totali?.valuta || "EUR"}
+                                 EUR
                               </span>
                            </div>
                         ) : (

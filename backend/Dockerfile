@@ -16,6 +16,9 @@ RUN pip install --upgrade pip
 # Copiamo solo il manifest delle dipendenze per ora
 COPY requirements.txt .
 
+# Installiamo dipendenze di sistema minime per diagnostica (ping)
+RUN apt-get update && apt-get install -y iputils-ping && rm -rf /var/lib/apt/lists/*
+
 # Installiamo i pacchetti necessari al server
 RUN pip install --no-cache-dir -r requirements.txt
 

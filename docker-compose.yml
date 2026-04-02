@@ -13,6 +13,7 @@ services:
       ports:
         - "5433:5432"
       restart: always
+      command: ["postgres", "-c", "max_connections=300"]
       volumes:
         - postgres_data:/var/lib/postgresql/data
       healthcheck:
@@ -20,6 +21,8 @@ services:
         interval: 5s
         timeout: 5s
         retries: 5
+      networks:
+        - ocr_net
 
   # ----------------------------------------
   # REDIS: Message Broker (Celery Queue)
@@ -34,6 +37,8 @@ services:
         interval: 5s
         timeout: 3s
         retries: 5
+      networks:
+        - ocr_net
 
   # ----------------------------------------
   # MONGODB: Document Storage (OCR Results)
@@ -52,6 +57,8 @@ services:
         interval: 10s
         timeout: 5s
         retries: 5
+      networks:
+        - ocr_net
 
   # ----------------------------------------
   # DJANGO: Backend Principale e Orchestratore
@@ -59,6 +66,8 @@ services:
   backend:
       build: ./backend
       env_file: .env
+      environment:
+        - EVENTLET_NO_GREENDNS=yes
       command: sh -c "python manage.py migrate --no-input && python manage.py runserver 0.0.0.0:8000"
       volumes:
         - ./backend:/app
@@ -69,6 +78,8 @@ services:
           condition: service_healthy
         redis:
           condition: service_healthy
+      networks:
+        - ocr_net
 
   # ----------------------------------------
   # CELERY WORKER: Esecuzione Task Asincroni
@@ -76,12 +87,17 @@ services:
   celery_worker:
       build: ./backend
       env_file: .env
-      command: celery -A core worker -l info --pool=solo
+      environment:
+        - EVENTLET_NO_GREENDNS=yes
+      # 🚀 ENTRYPOINT HARDENED: Attende la risoluzione DNS di redis prima di partire
+      command: sh -c "until ping -c 1 redis; do echo 'Waiting for redis DNS...'; sleep 1; done && celery -A core worker -l info -P eventlet -c 100"
       volumes:
         - ./backend:/app
       depends_on:
         redis:
           condition: service_healthy
+      networks:
+        - ocr_net
 
   # ----------------------------------------
   # FASTAPI: Microservizio Vision AI (Gemini)
@@ -94,6 +110,8 @@ services:
         - ./ocr_service:/app
       ports:
         - "8001:8001"
+      networks:
+        - ocr_net
 
   # ----------------------------------------
   # NEXT.JS: Interfaccia Utente
@@ -108,7 +126,15 @@ services:
       ports:
         - "3000:3000"
       environment:
+        - NEXTAUTH_URL=http://localhost:3000
+        - NEXTAUTH_SECRET=secret_sviluppo_deep_ex_2026
         - WATCHPACK_POLLING=true
+      networks:
+        - ocr_net
+
+networks:
+  ocr_net:
+    driver: bridge
 
 volumes:
   postgres_data:

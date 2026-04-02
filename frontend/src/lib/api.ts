@@ -40,6 +40,7 @@ async function apiFetch<T>(endpoint: string, options: FetchOptions = {}): Promis
 
   const response = await fetch(url, {
     ...rest,
+    cache: 'no-store', // 🚀 Forza il fetch dinamico per filtri e paginazione
     body,
     headers: {
       ...defaultHeaders,
@@ -93,16 +94,29 @@ export const documentService = {
   async getAll(token: string, customUrl?: string, status?: string) {
     let url = customUrl || '/api/documents/';
     
-    // 🛡️ Se c'è un filtro status, lo aggiungiamo alla URL (solo se non stiamo paginando con un customUrl completo)
-    if (status && status !== 'ALL' && !customUrl) {
-      url += `?status=${status}`;
+    // 🛡️ Aggiungiamo lo status se presente (gestendo correttamente ? o &)
+    if (status && status !== 'ALL') {
+      const sep = url.includes('?') ? '&' : '?';
+      // Evitiamo duplicazioni se lo status è già nel customUrl
+      if (!url.includes('status=')) {
+        url += `${sep}status=${status}`;
+      }
     }
     
     return apiFetch<any>(url, { token });
   },
 
-  async getAdminDocuments(token: string, userId: string) {
-    return apiFetch<any>(`/api/admin/documents/?user_id=${userId}`, { token });
+  async getAdminDocuments(token: string, userId: string, customUrl?: string, status?: string) {
+    let url = customUrl || `/api/admin/documents/?user_id=${userId}`;
+    
+    if (status && status !== 'ALL') {
+      const sep = url.includes('?') ? '&' : '?';
+      if (!url.includes('status=')) {
+        url += `${sep}status=${status}`;
+      }
+    }
+    
+    return apiFetch<any>(url, { token });
   },
 
   async getById(id: string, token: string) {

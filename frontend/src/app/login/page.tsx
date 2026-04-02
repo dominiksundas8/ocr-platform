@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { signIn } from "next-auth/react";
+import { signIn, getSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
@@ -27,7 +27,13 @@ export default function LoginPage() {
       setError("Credenziali non valide. Riprova.");
       setLoading(false);
     } else {
-      router.push("/dashboard");
+      // 💪 SMART REDIRECT: Verifica il ruolo rima di decidere dove mandare l'utente
+      const session = await getSession();
+      if ((session?.user as any)?.isStaff) {
+        router.push("/dashboard/admin");
+      } else {
+        router.push("/dashboard");
+      }
     }
   };
 

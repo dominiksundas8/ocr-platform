@@ -1,5 +1,12 @@
 from django.contrib import admin
-from .models import Document
+from django.contrib.auth.admin import UserAdmin
+from .models import Document, CustomUser
+
+@admin.register(CustomUser)
+class CustomUserAdmin(UserAdmin):
+    # Tabella ottimizzata per gli ID lunghi
+    list_display = ('id', 'email', 'username', 'is_staff')
+    search_fields = ('email', 'username', 'id')
 
 @admin.register(Document)
 class DocumentAdmin(admin.ModelAdmin):

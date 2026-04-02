@@ -1,10 +1,10 @@
 "use client";
 
+import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { CheckCircle, AlertCircle, Loader2, Clock, Layers } from "lucide-react";
 
 interface StatusFilterBarProps {
   currentFilter: string;
-  onFilterChange: (status: string) => void;
 }
 
 const filters = [
@@ -15,7 +15,24 @@ const filters = [
   { id: 'FAILED', label: 'Falliti', icon: AlertCircle, color: 'text-rose-400', activeBg: 'bg-rose-500/10 border-rose-500/30' },
 ];
 
-export default function StatusFilterBar({ currentFilter, onFilterChange }: StatusFilterBarProps) {
+export default function StatusFilterBar({ currentFilter }: StatusFilterBarProps) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
+  const handleFilterClick = (status: string) => {
+    const params = new URLSearchParams(searchParams.toString());
+    if (status === 'ALL') {
+      params.delete('status');
+    } else {
+      params.set('status', status);
+    }
+    // Resettiamo sempre alla pagina 1 quando cambiamo filtro
+    params.delete('page');
+    
+    router.push(`${pathname}?${params.toString()}`);
+  };
+
   return (
     <div className="flex items-center gap-2 overflow-x-auto pb-4 mb-2 no-scrollbar md:overflow-visible">
       {filters.map((filter) => {
@@ -25,7 +42,7 @@ export default function StatusFilterBar({ currentFilter, onFilterChange }: Statu
         return (
           <button
             key={filter.id}
-            onClick={() => onFilterChange(filter.id)}
+            onClick={() => handleFilterClick(filter.id)}
             className={`
               flex items-center gap-2 px-4 py-2 rounded-full border transition-all duration-300 whitespace-nowrap
               ${isActive 

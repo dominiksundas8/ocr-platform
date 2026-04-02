@@ -1,7 +1,7 @@
 import os
 from dj_rest_auth.serializers import UserDetailsSerializer
 from rest_framework import serializers
-from django.contrib.auth.models import User
+from django.contrib.auth import get_user_model
 from pymongo import MongoClient
 from bson import ObjectId
 from .models import Document
@@ -31,7 +31,7 @@ class AdminUserSerializer(serializers.ModelSerializer):
     document_count = serializers.IntegerField(read_only=True)
     
     class Meta:
-        model = User
+        model = get_user_model()
         fields = ('id', 'username', 'email', 'date_joined', 'is_staff', 'document_count')
 
 class DocumentSerializer(serializers.ModelSerializer):
@@ -40,8 +40,12 @@ class DocumentSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Document
-        fields = ('id', 'user', 'file', 'status', 'error_message', 'ocr_result', 'mongo_result_id', 'uploaded_at')
-        read_only_fields = ('user', 'status', 'error_message', 'ocr_result', 'mongo_result_id')
+        fields = (
+            'id', 'user', 'file', 'status', 'error_message', 
+            'supplier_name', 'total_amount', 'invoice_date',
+            'ocr_result', 'mongo_result_id', 'uploaded_at'
+        )
+        read_only_fields = ('user', 'status', 'error_message', 'ocr_result', 'mongo_result_id', 'supplier_name', 'total_amount', 'invoice_date')
 
     def get_ocr_result(self, obj):
         """
@@ -56,6 +60,7 @@ class DocumentSerializer(serializers.ModelSerializer):
                 mongo_doc = collection.find_one({"_id": ObjectId(obj.mongo_result_id)})
                 if mongo_doc:
                     # 🛡️ CROSS-CHECK DI SICUREZZA: Verifica che il dato appartenga all'utente proprietario
+                    # Convertiamo entrambi in stringa per un confronto sicuro (Mongo salva stringhe, Postgres usa UUID)
                     if str(mongo_doc.get('user_id')) != str(obj.user.id):
                         return {"error": "Access denied: Data ownership mismatch."}
                     

@@ -52,16 +52,26 @@ def process_document_task(self, document_id, content_type):
             collection = get_mongo_collection()
             # Inseriamo il risultato JSON aggiungendo anche il document_id di Postgres per rintracciabilità
             mongo_data = {
-                "postgres_id": doc.id,
-                "user_id": doc.user.id,
+                "postgres_id": str(doc.id),
+                "user_id": str(doc.user.id),
                 "data": result_or_error
             }
             mongo_obj = collection.insert_one(mongo_data)
             mongo_id_str = str(mongo_obj.inserted_id)
 
-            # 2. Aggiornamento POSTGRESQL
+            # 2. Aggiornamento POSTGRESQL (Denormalizzazione per Performance)
             doc.mongo_result_id = mongo_id_str
             doc.ocr_result = None  # Svuotiamo il campo vecchio (Migrazione Totale)
+            
+            # 🚀 Estraiamo i campi core per la denormalizzazione in Postgres (Lista veloce)
+            # La struttura corretta è: extracted_data -> campi_strutturati -> [sezione] -> [campo]
+            extracted = result_or_error.get('extracted_data', {})
+            kyc = extracted.get('campi_strutturati', {})
+            
+            doc.supplier_name = kyc.get('fornitore', {}).get('nome')
+            doc.total_amount = kyc.get('totali', {}).get('totale_da_pagare')
+            doc.invoice_date = kyc.get('dati_fattura', {}).get('data')
+            
             doc.status = 'COMPLETED'
             doc.save()
             

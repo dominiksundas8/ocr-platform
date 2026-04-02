@@ -7,7 +7,7 @@ from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny, IsAuthenticated, IsAdminUser
 from django.db.models import Count
-from django.contrib.auth.models import User
+from django.contrib.auth import get_user_model
 from .models import Document
 from .serializers import DocumentSerializer, AdminUserSerializer, CustomUserDetailsSerializer
 from .services import OCRService
@@ -61,6 +61,7 @@ class AdminUserListView(generics.ListAPIView):
     permission_classes = [IsAdminUser]
 
     def get_queryset(self):
+        User = get_user_model()
         return User.objects.annotate(document_count=Count('documents')).order_by('-date_joined')
 
 class AdminDocumentListView(generics.ListAPIView):
@@ -80,15 +81,22 @@ class AdminDocumentListView(generics.ListAPIView):
         if user_id is not None:
              qs = qs.filter(user_id=user_id)
         
+        # 🧪 Filtraggio Dinamico: ?status=COMPLETED (anche per Admin)
+        status_filter = self.request.query_params.get('status')
+        if status_filter and status_filter != 'ALL':
+             qs = qs.filter(status=status_filter)
+        
         return qs
 
 class AdminUserDetailView(generics.RetrieveDestroyAPIView):
     """
     Permette all'admin di visualizzare o ELIMINARE un intero account utente.
     """
-    queryset = User.objects.all()
     serializer_class = AdminUserSerializer
     permission_classes = [IsAdminUser]
+
+    def get_queryset(self):
+        return get_user_model().objects.all()
 
 class UploadDocumentView(APIView):
     # Parser per accettare File dal Browser
